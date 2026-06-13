@@ -2,7 +2,7 @@
 
 **Every citation. Checked against real courts. Before you file.**
 
-> **Live demo:** http://194.247.183.32:3100 — click **"Load demo brief"** and **Run the firewall**.
+> **Live demo:** **https://firewall.iceclaw.online** — click **"Load demo brief"** and **Run the firewall**.
 
 Attorneys keep getting sanctioned for filing AI-drafted briefs with **hallucinated citations** — fake cases with plausible names and realistic reporters. It has kept happening since 2023. Generic AI checks nothing; the lawyer finds out when the judge does.
 
@@ -109,9 +109,8 @@ The grading artifacts live alongside this README: [`PLAN.md`](./PLAN.md), [`RUBR
 
 ## Deployment
 
-The single Hono process runs in `tmux` on the operator's Iceland VPS (public IP
-`194.247.183.32`, port `3100` — port 3000 on that host is taken by an unrelated
-service):
+The single Hono process runs in `tmux` on the operator's Iceland VPS, on
+`127.0.0.1:3100` (port 3000 on that host is taken by an unrelated service):
 
 ```bash
 tmux new-session -d -s citation-firewall \
@@ -121,8 +120,13 @@ tmux new-session -d -s citation-firewall \
   "cd citation-firewall && pnpm start"
 ```
 
-That host:port (`http://194.247.183.32:3100`) is the live URL — no platform
-build pipeline, no cold starts.
+An **nginx** reverse proxy on the same box exposes it publicly at
+**https://firewall.iceclaw.online** (Let's Encrypt TLS via certbot). The proxy
+config is a single name-based vhost that forwards to `127.0.0.1:3100` with the
+headers Server-Sent Events need — `proxy_http_version 1.1`,
+`proxy_set_header Connection ''`, `proxy_buffering off`, and a long
+`proxy_read_timeout` — so the live deliberation stream flows through TLS. No
+platform build pipeline, no cold starts.
 
 ## License
 
