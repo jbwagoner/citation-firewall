@@ -91,7 +91,7 @@ Before declaring any milestone done, spawn a verifier sub-agent in a fresh conte
 - **Done-gate 1 — `pnpm test`:** 23/23 unit tests pass (parser, verifier mapping w/ mocked CourtListener, halt-between-stages, zod rejection, R3 grep proof).
 - **Done-gate 2 — `pnpm e2e`:** live pipeline on the demo brief passes in ~52s (<90s); fabricated cite FLAGGED, all 5 real cites VERIFIED with working CourtListener links (R1 + R2).
 - **Done-gate 3 — deployed + production run:** app live in tmux on `0.0.0.0:3100` (port note below); `curl /` → HTTP 200; full production demo run over HTTP+SSE in 79s, 5 VERIFIED + 1 FLAGGED; HALT mid-run stops the pipeline before the next stage (no verify, no sutra). Found & fixed two bugs en route: deps resolved outside try/catch could crash the process; SSE handler closed before flushing terminal events (now a drain queue with awaited writes).
-- **Done-gate 4 — verifier sub-agent → VERIFICATION.md:** _(in progress)_
+- **Done-gate 4 — verifier sub-agent → VERIFICATION.md:** independent fresh-context sub-agent graded **PASS on all R1–R10** and all 3 machine gates (`pnpm test` 23/23, `pnpm e2e` 1/1 in 57.7s, live run 52s + halt). Report committed as `VERIFICATION.md`.
 
 ### Port note (operator decision pending)
 Chosen port **3000** is occupied on the VPS by an unrelated root-owned docker-proxy bound to `127.0.0.1:3000`; binding `0.0.0.0:3000` conflicts (EADDRINUSE). I will not stop the operator's container. Deployed on free port **3100** for now and surfaced the public-port decision to the operator (changes the live URL).
@@ -107,4 +107,4 @@ Chosen port **3000** is occupied on the VPS by an unrelated root-owned docker-pr
 - [x] e2e
 - [x] README
 - [x] Deploy + production demo (on :3100; public port TBD with operator)
-- [ ] VERIFICATION.md (verifier sub-agent)
+- [x] VERIFICATION.md (verifier sub-agent) — PASS on all R1–R10
