@@ -2,6 +2,8 @@
 
 **Every citation. Checked against real courts. Before you file.**
 
+> **Live demo:** http://194.247.183.32:3100 — click **"Load demo brief"** and **Run the firewall**.
+
 Attorneys keep getting sanctioned for filing AI-drafted briefs with **hallucinated citations** — fake cases with plausible names and realistic reporters. It has kept happening since 2023. Generic AI checks nothing; the lawyer finds out when the judge does.
 
 Citation Firewall makes that impossible. Paste a draft brief and:
@@ -107,17 +109,20 @@ The grading artifacts live alongside this README: [`PLAN.md`](./PLAN.md), [`RUBR
 
 ## Deployment
 
-The single Hono process runs in `tmux` on the operator's Iceland VPS:
+The single Hono process runs in `tmux` on the operator's Iceland VPS (public IP
+`194.247.183.32`, port `3100` — port 3000 on that host is taken by an unrelated
+service):
 
 ```bash
 tmux new-session -d -s citation-firewall \
   -e "ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY" \
   -e "COURTLISTENER_TOKEN=$COURTLISTENER_TOKEN" \
-  -e "PORT=3000" \
+  -e "PORT=3100" \
   "cd citation-firewall && pnpm start"
 ```
 
-That host:port is the live URL — no platform build pipeline, no cold starts.
+That host:port (`http://194.247.183.32:3100`) is the live URL — no platform
+build pipeline, no cold starts.
 
 ## License
 
