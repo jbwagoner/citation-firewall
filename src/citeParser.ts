@@ -114,29 +114,66 @@ const STOP_WORDS = new Set([
   'accord',
 ]);
 
-/**
- * Extract the significant tokens (party surnames, distinctive words) from a case
- * name — used to decide whether a CourtListener result is really the cited case.
- */
-export function nameTokens(caseName: string | null): string[] {
-  if (!caseName) return [];
-  return caseName
-    .toLowerCase()
-    .replace(/\bv\.?\b/g, ' ')
-    .replace(/[^a-z0-9\s]/g, ' ')
-    .split(/\s+/)
-    .filter((w) => w.length >= 4 && !STOP_WORDS.has(w));
+/** Tokenize one chunk of a case name: ≥4-char words, minus corporate/signal stopwords. */
+function tokenize(s: string): Set<string> {
+  return new Set(
+    s
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .split(/\s+/)
+      .filter((w) => w.length >= 4 && !STOP_WORDS.has(w)),
+  );
 }
 
 /**
- * Does `actual` (a CourtListener case name) plausibly refer to the same case as
- * `cited` (the name from the brief)? True when they share at least one
- * significant token. Lenient by design — a single shared party surname is a
- * strong signal, and we'd rather VERIFY a real match than over-FLAG.
+ * Extract the significant tokens from a whole case name (both parties). Kept for
+ * callers/tests that want a flat token list.
+ */
+export function nameTokens(caseName: string | null): string[] {
+  if (!caseName) return [];
+  return [...tokenize(caseName.replace(/\bv\.?\b/g, ' '))];
+}
+
+/** Split a case name into plaintiff (left) / defendant (right) token sets on "v.". */
+export function splitParties(name: string | null): { left: Set<string>; right: Set<string> } {
+  if (!name) return { left: new Set(), right: new Set() };
+  const parts = name.split(/\sv\.?\s/i);
+  const left = tokenize(parts[0] ?? '');
+  const right = tokenize(parts.slice(1).join(' '));
+  return { left, right };
+}
+
+type SideVerdict = 'match' | 'neutral' | 'mismatch';
+
+function sideVerdict(a: Set<string>, b: Set<string>): SideVerdict {
+  if (a.size === 0 || b.size === 0) return 'neutral'; // initials / no distinctive tokens
+  for (const t of a) if (b.has(t)) return 'match';
+  return 'mismatch';
+}
+
+/**
+ * Does `actual` (a CourtListener case name) refer to the SAME case as `cited`?
+ *
+ * A case name is `Plaintiff v. Defendant`. We compare the parties side-by-side
+ * and require a SUBSTANTIAL match: neither side may be a definite mismatch, and
+ * at least one side must positively match. A shared defendant alone (common in
+ * "v. City of X" / "v. County" suits) is NOT sufficient — the plaintiff side
+ * must also correspond. Abbreviation/initials differences are tolerated as
+ * "neutral" (e.g. "Dist." vs "District", "M.A.L." vs "M.A.L. Ex Rel. M.L.").
+ * The reversed caption (appeals flip the parties) is also accepted.
+ *
+ * This is the guarantee behind VERIFIED: "Miller v. City of Wickliffe" must NOT
+ * verify against "Mosley v. City of Wickliffe" on the shared city alone.
  */
 export function nameMatches(cited: string | null, actual: string | null): boolean {
-  const a = nameTokens(cited);
-  const b = new Set(nameTokens(actual));
-  if (a.length === 0 || b.size === 0) return false;
-  return a.some((t) => b.has(t));
+  const c = splitParties(cited);
+  const a = splitParties(actual);
+
+  const orientationOk = (al: Set<string>, ar: Set<string>): boolean => {
+    const left = sideVerdict(c.left, al);
+    const right = sideVerdict(c.right, ar);
+    return left !== 'mismatch' && right !== 'mismatch' && (left === 'match' || right === 'match');
+  };
+
+  return orientationOk(a.left, a.right) || orientationOk(a.right, a.left);
 }

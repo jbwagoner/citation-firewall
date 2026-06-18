@@ -120,6 +120,9 @@
       .row-verified .mark { color: var(--verified); }
       .row-high .mark { color: var(--warn); }
       .row-unverified .mark { color: var(--muted); }
+      .row-mismatch { background: rgba(224, 180, 84, 0.06); }
+      .row-mismatch .mark { color: var(--warn); font-weight: 600; }
+      .row-mismatch .note { color: var(--warn); }
       .row-flagged { background: rgba(224, 108, 91, 0.07); }
       .row-flagged .mark { color: var(--danger); }
       .row-flagged .note { color: var(--danger); }
@@ -128,6 +131,7 @@
         padding: 2px 7px; border-radius: 4px; margin-left: 8px; vertical-align: middle;
       }
       .badge-flagged { color: var(--danger); border: 1px solid rgba(224,108,91,.5); }
+      .badge-mismatch { color: var(--warn); border: 1px solid rgba(224,180,84,.5); }
       @media (prefers-reduced-motion: no-preference) {
         .row-flagged.arrive { animation: flagpulse 1.4s ease-out 2; }
       }
@@ -226,7 +230,7 @@
             </tbody>
           </table>
           <div class="legend">
-            <span>✓ verified</span><span>◐ high confidence</span><span>⚠ unverified</span><span>✕ flagged — fabrication</span>
+            <span>✓ verified</span><span>◐ high confidence</span><span>≠ cite mismatch</span><span>⚠ unverified</span><span>✕ flagged — no matching opinion</span>
             <span id="lookupMeta" style="margin-left:auto;color:var(--ice)"></span>
           </div>
         </div>
@@ -246,10 +250,11 @@
 
     <script>
       const $ = (id) => document.getElementById(id);
-      const MARKS = { VERIFIED: "✓", HIGH_CONFIDENCE: "◐", UNVERIFIED: "⚠", FLAGGED: "✕" };
+      const MARKS = { VERIFIED: "✓", HIGH_CONFIDENCE: "◐", CITE_MISMATCH: "≠", UNVERIFIED: "⚠", FLAGGED: "✕" };
       const ROWCLASS = {
         VERIFIED: "row-verified",
         HIGH_CONFIDENCE: "row-high",
+        CITE_MISMATCH: "row-mismatch",
         UNVERIFIED: "row-unverified",
         FLAGGED: "row-flagged",
       };
@@ -386,7 +391,12 @@
         const link = c.url
           ? '<a href="' + esc(c.url) + '" target="_blank" rel="noopener">View opinion →</a>'
           : '<span class="lat">—</span>';
-        const flaggedBadge = c.status === "FLAGGED" ? '<span class="badge badge-flagged">fabrication</span>' : "";
+        const flaggedBadge =
+          c.status === "FLAGGED"
+            ? '<span class="badge badge-flagged">no matching opinion</span>'
+            : c.status === "CITE_MISMATCH"
+              ? '<span class="badge badge-mismatch">cite mismatch</span>'
+              : "";
         tr.innerHTML =
           '<td class="mark">' + (MARKS[c.status] || "•") + "</td>" +
           '<td><div class="cite">' + citeName + flaggedBadge + "</div>" +

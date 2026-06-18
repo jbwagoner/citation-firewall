@@ -9,8 +9,9 @@
  * grep-checkable; see test/r3-grep.test.ts.
  */
 export type CitationStatus =
-  | 'VERIFIED' // a real opinion exists at this reporter cite and the case name matches
+  | 'VERIFIED' // a real opinion exists at this reporter cite AND the case name substantially matches
   | 'HIGH_CONFIDENCE' // the case name was found, but not at the cited reporter location
+  | 'CITE_MISMATCH' // the cite resolves to a real opinion, but a DIFFERENT case than the one named
   | 'UNVERIFIED' // unparseable cite, or CourtListener was unreachable (database unavailable)
   | 'FLAGGED'; // no matching opinion found in any reporter — hallmark of AI fabrication
 

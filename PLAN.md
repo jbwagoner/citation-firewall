@@ -103,6 +103,13 @@ Operator request: add a NEW nginx server block reverse-proxying `firewall.icecla
 ### Port note (operator decision pending)
 Chosen port **3000** is occupied on the VPS by an unrelated root-owned docker-proxy bound to `127.0.0.1:3000`; binding `0.0.0.0:3000` conflicts (EADDRINUSE). I will not stop the operator's container. Deployed on free port **3100** for now and surfaced the public-port decision to the operator (changes the live URL).
 
+### Post-ship hardening (operator-driven, 2026-06-18)
+- **Real-world citation formats:** parser now tolerates pincites/ranges, strips Bluebook signals + docket numbers, and splits semicolon string cites (one verdict per authority). CourtListener `citation-lookup` already handled these — the parser was the failure point.
+- **Multi-match (status 300):** CourtListener returns 300 when a cite matches several opinions; verifier now treats 200 *and* 300 as found and picks the candidate whose name matches.
+- **Zero-argument completion:** `ExtractSchema.argumentsList` no longer requires `.min(1)`; citation-dense / argument-light text completes (verifies + synthesizes) instead of erroring.
+- **Stricter VERIFIED (false-positive fix):** name matching is now side-aware (`Plaintiff v. Defendant`) requiring a substantial match — a shared defendant alone no longer verifies (e.g. "Miller v. City of Wickliffe" ≠ "Mosley v. City of Wickliffe"). New status **`CITE_MISMATCH`** for cites that resolve to a different real case. Demo carries two planted defects (one FLAGGED, one CITE_MISMATCH). 36 unit tests + e2e green.
+- _Note: `VERIFICATION.md` predates these post-ship fixes; a re-grade by the verifier sub-agent is warranted before any new "done" sign-off._
+
 ## Status
 - [x] Kickoff questions answered; RUBRIC.md + PLAN.md written.
 - [x] Scaffold

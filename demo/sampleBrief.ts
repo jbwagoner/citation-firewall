@@ -22,7 +22,7 @@ To survive a motion to dismiss, a complaint must contain sufficient factual matt
 
 II. Plaintiff Has Not Pleaded Non-Functionality.
 
-Trade dress that is functional cannot be protected. Qualitex Co. v. Jacobson Products Co., 514 U.S. 159 (1995). A product feature is functional, and cannot serve as a trademark, if it is essential to the use or purpose of the article or affects its cost or quality. Plaintiff alleges only that the stitching pattern on its jackets is "recognizable," which speaks to recognition, not to non-functionality. Because functionality is an element Plaintiff must plead, the Complaint is deficient.
+Trade dress that is functional cannot be protected. Qualitex Co. v. Jacobson Products Co., 514 U.S. 159 (1995). A product feature is functional, and cannot serve as a trademark, if it is essential to the use or purpose of the article or affects its cost or quality. The Ninth Circuit has applied this principle to apparel design, holding that a functional stitching pattern cannot acquire trade-dress protection no matter how recognizable. Vandermeer Holdings, LLC v. Calloway Logistics, Inc., 742 F.4th 1188 (9th Cir. 2024). Plaintiff alleges only that the stitching pattern on its jackets is "recognizable," which speaks to recognition, not to non-functionality. Because functionality is an element Plaintiff must plead, the Complaint is deficient.
 
 III. Plaintiff Has Not Pleaded Inherent Distinctiveness or Secondary Meaning.
 
@@ -45,8 +45,21 @@ export const REAL_CITES = [
   'Two Pesos, Inc. v. Taco Cabana, Inc., 505 U.S. 763 (1992)',
 ];
 
-/** The planted fabrication — a convincing name + cite for an opinion that does not exist. */
-export const FABRICATED_CITE = 'Sunhaven Brands, LLC v. Meridian Apparel Co., 784 F.3d 412 (9th Cir. 2015)';
+// TWO planted defects, demonstrating both non-VERIFIED failure modes:
 
-/** A distinctive token from the fabricated case name, for assertions. */
-export const FABRICATED_NAME_TOKEN = 'Sunhaven';
+/**
+ * FLAGGED — a convincing name + cite for an opinion that does not exist at all.
+ * 742 F.4th 1188 resolves to NOTHING in CourtListener → "no matching opinion".
+ */
+export const FLAGGED_FABRICATED_CITE =
+  'Vandermeer Holdings, LLC v. Calloway Logistics, Inc., 742 F.4th 1188 (9th Cir. 2024)';
+export const FLAGGED_NAME_TOKEN = 'Vandermeer';
+
+/**
+ * CITE_MISMATCH — the cite resolves to a REAL but different case. 784 F.3d 412
+ * is a real opinion (Friedman v. City of Highland Park), so the cited
+ * "Sunhaven … v. Meridian" case+cite pair does not exist — caught, not VERIFIED.
+ */
+export const MISMATCH_CITE =
+  'Sunhaven Brands, LLC v. Meridian Apparel Co., 784 F.3d 412 (9th Cir. 2015)';
+export const MISMATCH_NAME_TOKEN = 'Sunhaven';

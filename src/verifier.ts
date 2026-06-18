@@ -109,12 +109,16 @@ export async function verifyParsed(
         actualCaseName: match.caseName,
       });
     }
+    // The cite resolves to a real opinion, but to a DIFFERENT case than the one
+    // named. We cannot call this VERIFIED — the cite+name pair does not match.
+    // (Could be an AI fabrication, a wrong reporter location, or a companion
+    // case; the honest verdict is "confirm this is the intended authority".)
     const first = byCite.candidates[0];
     return finish(
-      'FLAGGED',
-      `This reporter citation resolves to a different case (${
-        first?.caseName || 'unknown'
-      }). The cited case was not found at this citation — hallmark of AI fabrication. BLOCKED from synthesis.`,
+      'CITE_MISMATCH',
+      `Cite resolves to "${
+        first?.caseName || 'an opinion'
+      }", which is NOT the cited case — confirm this is the intended authority. Not verified; do not rely on it as cited.`,
       { url: first?.url ?? null, actualCaseName: first?.caseName ?? null },
     );
   }

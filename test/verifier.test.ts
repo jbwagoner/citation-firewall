@@ -57,7 +57,7 @@ describe('verifier mapping (mocked CourtListener)', () => {
     expect(e.note.toLowerCase()).toContain('no matching opinion');
   });
 
-  it('cite resolves to a DIFFERENT case → FLAGGED (fabrication signature)', async () => {
+  it('cite resolves to a DIFFERENT case → CITE_MISMATCH (not VERIFIED, not FLAGGED)', async () => {
     const e = await verifyCitation(
       FAKE,
       client({
@@ -72,7 +72,28 @@ describe('verifier mapping (mocked CourtListener)', () => {
         }),
       }),
     );
-    expect(e.status).toBe('FLAGGED');
+    expect(e.status).toBe('CITE_MISMATCH');
+    expect(e.actualCaseName).toBe('United States v. Lopez');
+  });
+
+  it('Miller/Mosley: shared defendant, different plaintiff → CITE_MISMATCH, never VERIFIED', async () => {
+    const e = await verifyCitation(
+      'Miller v. City of Wickliffe, 852 F.3d 497 (6th Cir. 2017)',
+      client({
+        lookupByCite: async () => ({
+          found: true,
+          candidates: [
+            {
+              url: 'https://www.courtlistener.com/opinion/4377744/julious-mosley-v-city-of-wickliffe/',
+              caseName: 'Julious Mosley v. City of Wickliffe',
+            },
+          ],
+        }),
+      }),
+    );
+    expect(e.status).toBe('CITE_MISMATCH');
+    expect(e.status).not.toBe('VERIFIED');
+    expect(e.note).toMatch(/confirm/i);
   });
 
   it('cite with MULTIPLE matches (status 300) → VERIFIED when one candidate name matches', async () => {

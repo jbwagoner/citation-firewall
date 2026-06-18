@@ -149,12 +149,18 @@ function defaultDepsLazy(override?: Partial<PipelineDeps>): PipelineDeps {
  */
 export function buildReport(sutra: SutraOutput, ledger: LedgerEntry[]): Report {
   const problematic = ledger.filter(
-    (e) => e.status === 'FLAGGED' || e.status === 'UNVERIFIED',
+    (e) =>
+      e.status === 'FLAGGED' ||
+      e.status === 'CITE_MISMATCH' ||
+      e.status === 'UNVERIFIED',
   );
+
+  const severityFor = (s: string): number =>
+    s === 'FLAGGED' ? 5 : s === 'CITE_MISMATCH' ? 4 : 3;
 
   const injected = problematic.map((e) => ({
     title: `Reliance on unverifiable authority: ${e.caseName ?? e.raw}`,
-    severity: e.status === 'FLAGGED' ? 5 : 4,
+    severity: severityFor(e.status),
     passage: e.raw,
     repair: `${e.note} Remove or replace this citation before filing.`,
   }));

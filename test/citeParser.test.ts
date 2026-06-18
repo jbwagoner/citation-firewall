@@ -79,17 +79,31 @@ describe('parseCitations (string cites)', () => {
   });
 });
 
-describe('nameMatches', () => {
-  it('matches on a shared party surname', () => {
-    expect(
-      nameMatches('Bell Atlantic Corp. v. Twombly', 'Bell Atlantic Corp. v. Twombly'),
-    ).toBe(true);
-    expect(nameMatches('Two Pesos, Inc. v. Taco Cabana, Inc.', 'Two Pesos, Inc. v. Taco Cabana')).toBe(
-      true,
-    );
+describe('nameMatches — substantial, side-aware', () => {
+  it('verifies exact, abbreviation, and initials variants', () => {
+    expect(nameMatches('Bell Atlantic Corp. v. Twombly', 'Bell Atlantic Corp. v. Twombly')).toBe(true);
+    expect(nameMatches('Two Pesos, Inc. v. Taco Cabana, Inc.', 'Two Pesos, Inc. v. Taco Cabana')).toBe(true);
+    // "Dist." vs "District" abbreviation; "No. 403" already stripped by the parser.
+    expect(nameMatches('Bethel School Dist. v. Fraser', 'Bethel School District No. 403 v. Fraser')).toBe(true);
+    // Initials-only plaintiff on both sides → rely on the defendant.
+    expect(nameMatches('M.A.L. v. Kinsland', 'M.A.L. Ex Rel. M.L. v. Kinsland')).toBe(true);
+    expect(nameMatches('Gregory v. Shelby County', 'Gregory v. Shelby County')).toBe(true);
   });
 
-  it('does not match unrelated case names', () => {
+  it('does NOT verify on a shared defendant when the plaintiff differs (Miller/Mosley)', () => {
+    // The false-VERIFIED that prompted this fix: shared "City of Wickliffe", different plaintiff.
+    expect(nameMatches('Miller v. City of Wickliffe', 'Julious Mosley v. City of Wickliffe')).toBe(false);
+  });
+
+  it('does NOT verify on a shared common government party alone', () => {
+    expect(nameMatches('Smith v. County of Los Angeles', 'Johnson v. County of Los Angeles')).toBe(false);
+    expect(nameMatches('Acme Corp. v. City of Chicago', 'Beta Corp. v. City of Chicago')).toBe(false);
+  });
+
+  it('rejects a fabricated name whose cite resolves to a different case', () => {
+    expect(
+      nameMatches('Sunhaven Brands, LLC v. Meridian Apparel Co.', 'Arie Friedman v. City of Highland Park'),
+    ).toBe(false);
     expect(nameMatches('Sunhaven v. Meridian', 'United States v. Lopez')).toBe(false);
   });
 

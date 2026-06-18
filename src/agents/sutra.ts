@@ -21,8 +21,8 @@ Return JSON only:
 }
 
 Hard rules:
-- You may rely ONLY on authorities the ledger marks VERIFIED. You are forbidden from treating any FLAGGED or UNVERIFIED authority as good law.
-- If the brief relies on a FLAGGED or UNVERIFIED authority, that reliance is itself a weakness — list it with severity 5 and a repair that says to remove or replace the citation before filing.
+- You may rely ONLY on authorities the ledger marks VERIFIED. You are forbidden from treating any FLAGGED, CITE_MISMATCH, or UNVERIFIED authority as good law. A CITE_MISMATCH means the citation resolves to a DIFFERENT case than the one named — never treat it as the cited authority.
+- If the brief relies on a FLAGGED, CITE_MISMATCH, or UNVERIFIED authority, that reliance is itself a weakness — list it with high severity and a repair that says to remove, replace, or confirm the citation before filing.
 - Sort weaknesses by severity, highest first.
 - Output only the JSON object.`;
 
