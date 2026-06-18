@@ -157,10 +157,12 @@ export async function verifyParsed(
     );
   }
 
-  // 4. Nothing matched anywhere. This is the demo moment.
+  // 4. Nothing matched anywhere. Could not confirm — flag for manual review.
+  // A no-match is NOT proof of fabrication: the opinion may be unpublished, very
+  // recent, or in a reporter/database CourtListener doesn't fully cover.
   return finish(
     'FLAGGED',
-    'No matching opinion found in any reporter — hallmark of AI fabrication. BLOCKED from synthesis.',
+    "No match found in CourtListener — verify manually. May be fabricated, or unpublished, very recent, or in a reporter/database CourtListener doesn't fully cover.",
   );
 }
 

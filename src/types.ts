@@ -13,7 +13,7 @@ export type CitationStatus =
   | 'HIGH_CONFIDENCE' // the case name was found, but not at the cited reporter location
   | 'CITE_MISMATCH' // the cite resolves to a real opinion, but a DIFFERENT case than the one named
   | 'UNVERIFIED' // unparseable cite, or CourtListener was unreachable (database unavailable)
-  | 'FLAGGED'; // no matching opinion found in any reporter — hallmark of AI fabrication
+  | 'FLAGGED'; // no match found in CourtListener — verify manually (may be fabricated, unpublished, recent, or in an uncovered reporter)
 
 export interface ParsedCitation {
   raw: string; // the citation string as extracted from the brief

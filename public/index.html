@@ -230,7 +230,7 @@
             </tbody>
           </table>
           <div class="legend">
-            <span>✓ verified</span><span>◐ high confidence</span><span>≠ cite mismatch</span><span>⚠ unverified</span><span>✕ flagged — no matching opinion</span>
+            <span>✓ verified</span><span>◐ high confidence</span><span>≠ cite mismatch</span><span>⚠ unverified</span><span>✕ flagged — not found, verify manually</span>
             <span id="lookupMeta" style="margin-left:auto;color:var(--ice)"></span>
           </div>
         </div>
@@ -393,7 +393,7 @@
           : '<span class="lat">—</span>';
         const flaggedBadge =
           c.status === "FLAGGED"
-            ? '<span class="badge badge-flagged">no matching opinion</span>'
+            ? '<span class="badge badge-flagged">not found — verify</span>'
             : c.status === "CITE_MISMATCH"
               ? '<span class="badge badge-mismatch">cite mismatch</span>'
               : "";

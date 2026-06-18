@@ -54,7 +54,8 @@ describe('verifier mapping (mocked CourtListener)', () => {
   it('no opinion anywhere → FLAGGED (the demo moment)', async () => {
     const e = await verifyCitation(FAKE, client({}));
     expect(e.status).toBe('FLAGGED');
-    expect(e.note.toLowerCase()).toContain('no matching opinion');
+    expect(e.note.toLowerCase()).toContain('no match found');
+    expect(e.note.toLowerCase()).toMatch(/verify manually|unpublished/); // honest, not "proven fake"
   });
 
   it('cite resolves to a DIFFERENT case → CITE_MISMATCH (not VERIFIED, not FLAGGED)', async () => {

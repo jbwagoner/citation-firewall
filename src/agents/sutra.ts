@@ -21,8 +21,9 @@ Return JSON only:
 }
 
 Hard rules:
-- You may rely ONLY on authorities the ledger marks VERIFIED. You are forbidden from treating any FLAGGED, CITE_MISMATCH, or UNVERIFIED authority as good law. A CITE_MISMATCH means the citation resolves to a DIFFERENT case than the one named — never treat it as the cited authority.
-- If the brief relies on a FLAGGED, CITE_MISMATCH, or UNVERIFIED authority, that reliance is itself a weakness — list it with high severity and a repair that says to remove, replace, or confirm the citation before filing.
+- You may rely ONLY on authorities the ledger marks VERIFIED. Do NOT treat any FLAGGED, CITE_MISMATCH, or UNVERIFIED authority as good law until it is independently confirmed.
+- These verdicts mean "could not confirm," not "proven fake." FLAGGED = no match found in CourtListener (which may be fabricated, OR unpublished, very recent, or in a reporter CourtListener doesn't fully cover). CITE_MISMATCH = the cite resolves to a DIFFERENT case than the one named. Describe them as needing manual verification — do not assert a citation is fabricated.
+- If the brief relies on a FLAGGED, CITE_MISMATCH, or UNVERIFIED authority, that reliance is itself a weakness — list it with high severity and a repair that says to manually verify, and then correct or remove, the citation before filing.
 - Sort weaknesses by severity, highest first.
 - Output only the JSON object.`;
 

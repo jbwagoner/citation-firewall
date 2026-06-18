@@ -5,9 +5,9 @@ The verifier sub-agent grades the build against R1–R10. All must pass before "
 | ID | Requirement |
 |----|-------------|
 | **R1**  | Live URL loads; demo brief runs end-to-end in < 90s with no errors. |
-| **R2**  | Planted fabricated cite is FLAGGED ("no matching opinion"); all real demo cites are VERIFIED with working CourtListener links. |
+| **R2**  | Planted fabricated cite is FLAGGED ("no match found — verify manually"); all real demo cites are VERIFIED with working CourtListener links. |
 
-> **Honest-label guarantee (the heart of R2/R3):** `VERIFIED` requires BOTH the reporter cite to resolve AND the case name to *substantially* match — compared side-aware (`Plaintiff v. Defendant`), so a shared defendant alone (e.g. "v. City of Wickliffe") is never sufficient. A cite that resolves to a *different* real case is **`CITE_MISMATCH`** ("confirm this is the intended authority"), never `VERIFIED`. The demo exercises both non-VERIFIED failure modes: a truly nonexistent cite → `FLAGGED` (no matching opinion), and a cite that resolves to a different real case → `CITE_MISMATCH`.
+> **Honest-label guarantee (the heart of R2/R3):** `VERIFIED` requires BOTH the reporter cite to resolve AND the case name to *substantially* match — compared side-aware (`Plaintiff v. Defendant`), so a shared defendant alone (e.g. "v. City of Wickliffe") is never sufficient. A cite that resolves to a *different* real case is **`CITE_MISMATCH`** ("confirm this is the intended authority"), never `VERIFIED`. The demo exercises both non-VERIFIED failure modes: a cite with no CourtListener match → `FLAGGED` ("no match found — verify manually"; a flag means *could not confirm*, not *proven fake*), and a cite that resolves to a different real case → `CITE_MISMATCH`. Honest labeling is the point: a no-match may be a fabrication OR an unpublished / very recent / uncovered opinion.
 | **R3**  | `status=VERIFIED` is set only from a CourtListener response — grep proves no model call can set it. |
 | **R4**  | HALT stops the pipeline before the next stage; UI reflects it. |
 | **R5**  | Anthropic key is server-side only; never in the served HTML/client. |

@@ -39,7 +39,7 @@ describe('e2e: demo brief through the live pipeline', () => {
       );
       expect(flaggedFake, 'flagged fabrication must be extracted').toBeDefined();
       expect(flaggedFake!.status).toBe('FLAGGED');
-      expect(flaggedFake!.note.toLowerCase()).toMatch(/no matching opinion/);
+      expect(flaggedFake!.note.toLowerCase()).toMatch(/no match found|verify manually/);
 
       // ---- second failure mode: a cite that resolves to a DIFFERENT real case ----
       const mismatch = ledger.find((e) =>
