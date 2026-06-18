@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { parseCitation, parseCitations, nameMatches, nameTokens } from '../src/citeParser.js';
+import {
+  parseCitation,
+  parseCitations,
+  nameMatches,
+  nameTokens,
+  hasCaseName,
+} from '../src/citeParser.js';
 
 describe('parseCitation', () => {
   it('parses a U.S. Reports citation', () => {
@@ -55,6 +61,53 @@ describe('parseCitation', () => {
   it('handles a multi-word reporter with a pincite', () => {
     const p = parseCitation('Doe v. Roe, 410 F. Supp. 2d 552, 558 (S.D.N.Y. 2006)');
     expect(p.normalizedCite).toBe('410 F. Supp. 2d 552');
+  });
+});
+
+describe('paste-mangled (PDF) text — the real-user case', () => {
+  // The Tinker false-flag: parallel cites with collapsed/odd spacing must still
+  // resolve to the OFFICIAL cite (393 U.S. 503), never a garbage or last-parallel cite.
+  it('parallel cites collapse to the official U.S. cite (clean spacing)', () => {
+    const cites = parseCitations(
+      'Tinker v. Des Moines Indep. Cmty. Sch. Dist., 393 U.S. 503, 89 S.Ct. 733, 21 L.Ed.2d 731 (1969)',
+    );
+    expect(cites).toHaveLength(1); // one authority, not three
+    expect(cites[0].normalizedCite).toBe('393 U.S. 503');
+    expect(cites[0].caseName).toMatch(/^Tinker/);
+  });
+
+  it('parallel cites jammed with no space after commas', () => {
+    const cites = parseCitations('Tinker v. Des Moines, 393 U.S. 503,89 S.Ct. 733,21 L.Ed.2d 731 (1969)');
+    expect(cites).toHaveLength(1);
+    expect(cites[0].normalizedCite).toBe('393 U.S. 503');
+  });
+
+  it('citation split across a line break is reassembled', () => {
+    const cites = parseCitations('Tinker v. Des Moines, 393 U.S.\n503, 89 S.Ct. 733\n(1969)');
+    expect(cites[0].normalizedCite).toBe('393 U.S. 503');
+  });
+
+  it('collapsed whitespace / tabs / newlines in the case name and cite', () => {
+    const cites = parseCitations('Roe   v.\tWade,\n410   U.S.   113   (1973)');
+    expect(cites[0].normalizedCite).toBe('410 U.S. 113');
+    expect(cites[0].caseName).toMatch(/Roe v\. Wade/);
+  });
+
+  it('canonicalizes reporter spacing ("S.Ct." → "S. Ct.") to match CourtListener keys', () => {
+    expect(parseCitation('Foo v. Bar, 89 S.Ct. 733 (1969)').normalizedCite).toBe('89 S. Ct. 733');
+    expect(parseCitation('Foo v. Bar, 21 L.Ed.2d 731 (1969)').normalizedCite).toBe('21 L. Ed. 2d 731');
+  });
+
+  it('a subsequent-history fragment is not a real case name', () => {
+    const cites = parseCitations("(rev'd on other grounds, 412 U.S. 94 (1973))");
+    expect(cites[0].normalizedCite).toBe('412 U.S. 94');
+    expect(hasCaseName(cites[0].caseName)).toBe(false); // → verifier won't call it a mismatch
+  });
+
+  it('a real "X v. Y" name reads as a case name', () => {
+    expect(hasCaseName('Tinker v. Des Moines')).toBe(true);
+    expect(hasCaseName('In re Marriage of Smith')).toBe(true);
+    expect(hasCaseName('on other grounds')).toBe(false);
   });
 });
 

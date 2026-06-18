@@ -116,6 +116,21 @@ describe('verifier mapping (mocked CourtListener)', () => {
     expect(e.url).toContain('gregory-v-shelby-county');
   });
 
+  it('citation fragment (no case name) whose cite resolves → UNVERIFIED, not CITE_MISMATCH', async () => {
+    const e = await verifyCitation(
+      "(rev'd on other grounds, 412 U.S. 94 (1973))",
+      client({
+        lookupByCite: async () => ({
+          found: true,
+          candidates: [{ url: 'https://www.courtlistener.com/opinion/x/', caseName: 'Some Real Case v. Other' }],
+        }),
+      }),
+    );
+    expect(e.status).toBe('UNVERIFIED');
+    expect(e.status).not.toBe('CITE_MISMATCH');
+    expect(e.note.toLowerCase()).toContain('fragment');
+  });
+
   it('CourtListener unreachable → UNVERIFIED (database unavailable, never a false VERIFIED)', async () => {
     const e = await verifyCitation(
       REAL,

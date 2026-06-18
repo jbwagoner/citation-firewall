@@ -1,4 +1,10 @@
-import { parseCitation, parseCitations, nameMatches } from './citeParser.js';
+import {
+  parseCitation,
+  parseCitations,
+  nameMatches,
+  hasCaseName,
+  normalizeForCites,
+} from './citeParser.js';
 import type { CitationStatus, LedgerEntry, ParsedCitation } from './types.js';
 
 // ============================================================================
@@ -97,11 +103,21 @@ export async function verifyParsed(
   }
 
   if (byCite.found) {
+    // If there is no real cited case name to verify against — a subsequent-
+    // history fragment ("rev'd on other grounds") or a paste artifact — we can
+    // neither VERIFY (nothing to confirm) nor MISMATCH (nothing to mismatch).
+    // Report it benignly. This guard runs FIRST so a stray fragment token can't
+    // accidentally match a candidate's party name.
+    if (!hasCaseName(parsed.caseName)) {
+      return finish(
+        'UNVERIFIED',
+        'Citation fragment — no case name to confirm against the resolved opinion.',
+        { url: byCite.candidates[0]?.url ?? null, actualCaseName: byCite.candidates[0]?.caseName ?? null },
+      );
+    }
     // A real opinion sits at this reporter cite. Does one of the matching
     // opinions carry the cited case name? If yes, this is a genuine VERIFIED
-    // (even when the cite matched several opinions). If the cite resolves only
-    // to a DIFFERENT case, the cited case+cite pair does not exist — that is
-    // the classic fabrication signature, so we FLAG it rather than rubber-stamp.
+    // (even when the cite matched several opinions).
     const match = byCite.candidates.find((c) => nameMatches(parsed.caseName, c.caseName));
     if (match) {
       return finish('VERIFIED', 'Confirmed: real opinion found at this citation.', {
@@ -289,8 +305,10 @@ export async function verifyAll(
   shouldHalt?: () => boolean,
   delayMs = 150,
 ): Promise<LedgerEntry[]> {
-  // One batch citation-lookup for every cite in the brief (avoids the 5/min throttle).
-  await client.prime?.(rawCitations.join('\n'));
+  // One batch citation-lookup for every cite in the brief (avoids the 5/min
+  // throttle). Normalize first so cites split across PDF line breaks reassemble
+  // before CourtListener parses them.
+  await client.prime?.(normalizeForCites(rawCitations.join('\n')));
 
   // Expand real-world strings into individual cites: a string cite ("A …; B …")
   // becomes one entry per authority; an unparseable reference stays as a single
