@@ -48,7 +48,12 @@ pnpm e2e    # live: runs the demo brief through the real pipeline, asserts the f
 
 ## What you'll see (the demo)
 
-The demo brief is a ~600-word trademark motion to dismiss with **five real, stable citations** (Twombly, Iqbal, Conley, Qualitex, Two Pesos) and **one planted fabrication** — `Sunhaven Brands, LLC v. Meridian Apparel Co., 784 F.3d 412 (9th Cir. 2015)`. The five reals come back **✓ VERIFIED** with working links to the actual CourtListener opinions. The fabrication comes back **✕ FLAGGED** — that reporter cite resolves to a *different, real* case, so the cited case+cite pair does not exist. Classic AI fabrication, caught before filing. It is also surfaced as a **severity-5 weakness** and **blocked from the synthesis**.
+The demo brief is a ~600-word trademark motion to dismiss with **five real, stable citations** (Twombly, Iqbal, Conley, Qualitex, Two Pesos) and **two planted defects** that show both ways an AI citation goes wrong:
+
+- **✕ FLAGGED — `Vandermeer Holdings, LLC v. Calloway Logistics, Inc., 742 F.4th 1188 (9th Cir. 2024)`.** No opinion exists at that reporter location at all: *"no matching opinion found."* The textbook hallucination.
+- **≠ CITE MISMATCH — `Sunhaven Brands, LLC v. Meridian Apparel Co., 784 F.3d 412 (9th Cir. 2015)`.** That reporter cite *does* resolve — but to a different, real case (*Friedman v. City of Highland Park*). The cited case+cite pair doesn't exist, so it is **not VERIFIED**; the ledger says *"confirm this is the intended authority."*
+
+The five reals come back **✓ VERIFIED** with working links to the actual CourtListener opinions. Both defects are **blocked from the synthesis** and surfaced as severity-ranked weaknesses. Crucially, **VERIFIED requires the cite *and* the case name to match** — a real opinion at a real reporter cite under a different case name does not pass.
 
 ---
 
