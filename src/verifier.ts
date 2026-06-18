@@ -1,5 +1,5 @@
-import { parseCitation, nameMatches } from './citeParser.js';
-import type { CitationStatus, LedgerEntry } from './types.js';
+import { parseCitation, parseCitations, nameMatches } from './citeParser.js';
+import type { CitationStatus, LedgerEntry, ParsedCitation } from './types.js';
 
 // ============================================================================
 //  THE HEART OF CITATION FIREWALL
@@ -43,12 +43,19 @@ export interface CourtListenerClient {
  * Verify a single citation string against CourtListener. Pure decision logic on
  * top of the injected client — this is the function the unit tests target.
  */
-export async function verifyCitation(
+export function verifyCitation(
   raw: string,
   client: CourtListenerClient,
 ): Promise<LedgerEntry> {
+  return verifyParsed(parseCitation(raw), client);
+}
+
+/** Verify an already-parsed citation. The pure decision logic (unit-tested). */
+export async function verifyParsed(
+  parsed: ParsedCitation,
+  client: CourtListenerClient,
+): Promise<LedgerEntry> {
   const started = Date.now();
-  const parsed = parseCitation(raw);
   const base: Omit<LedgerEntry, 'status' | 'note' | 'latencyMs'> = {
     raw: parsed.raw,
     caseName: parsed.caseName,
@@ -269,18 +276,26 @@ export async function verifyAll(
   // One batch citation-lookup for every cite in the brief (avoids the 5/min throttle).
   await client.prime?.(rawCitations.join('\n'));
 
+  // Expand real-world strings into individual cites: a string cite ("A …; B …")
+  // becomes one entry per authority; an unparseable reference stays as a single
+  // (null-cite) entry so it still surfaces as UNVERIFIED.
+  const parsedList: ParsedCitation[] = rawCitations.flatMap((raw) => {
+    const cites = parseCitations(raw);
+    return cites.length > 0 ? cites : [parseCitation(raw)];
+  });
+
   const verdicts = new Map<string, LedgerEntry>();
   const ledger: LedgerEntry[] = [];
-  for (const raw of rawCitations) {
+  for (const parsed of parsedList) {
     if (shouldHalt?.()) break;
-    const key = parseCitation(raw).normalizedCite ?? raw.trim();
+    const key = parsed.normalizedCite ?? parsed.raw.trim();
     let entry = verdicts.get(key);
     if (!entry) {
-      entry = await verifyCitation(raw, client);
+      entry = await verifyParsed(parsed, client);
       verdicts.set(key, entry);
       if (delayMs > 0) await sleep(delayMs);
     } else {
-      entry = { ...entry, raw: raw.trim() };
+      entry = { ...entry, raw: parsed.raw };
     }
     ledger.push(entry);
     onEntry?.(entry);

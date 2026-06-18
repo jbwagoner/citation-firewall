@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseCitation, nameMatches, nameTokens } from '../src/citeParser.js';
+import { parseCitation, parseCitations, nameMatches, nameTokens } from '../src/citeParser.js';
 
 describe('parseCitation', () => {
   it('parses a U.S. Reports citation', () => {
@@ -25,6 +25,57 @@ describe('parseCitation', () => {
     const p = parseCitation('see the attached memorandum');
     expect(p.normalizedCite).toBeNull();
     expect(p.volume).toBeNull();
+  });
+
+  // Real-world brief formatting the demo's clean cites didn't exercise.
+  it('handles a pincite after the first page', () => {
+    const p = parseCitation('Meritor Sav. Bank v. Vinson, 477 U.S. 57, 64 (1986)');
+    expect(p.normalizedCite).toBe('477 U.S. 57'); // pincite discarded; matches CL key
+    expect(p.caseName).toContain('Vinson');
+  });
+
+  it('handles a pincite range', () => {
+    const p = parseCitation('Anderson v. Liberty Lobby, Inc., 477 U.S. 242, 248-49 (1986)');
+    expect(p.normalizedCite).toBe('477 U.S. 242');
+  });
+
+  it('strips a leading "see also" signal from the case name', () => {
+    const p = parseCitation('see also Anderson v. Liberty Lobby, Inc., 477 U.S. 242, 255 (1986)');
+    expect(p.normalizedCite).toBe('477 U.S. 242');
+    expect(p.caseName).toMatch(/^Anderson/); // "see also" removed
+  });
+
+  it('strips an embedded docket "No." from the case name', () => {
+    const p = parseCitation('Gratz v. Bollinger, No. 02-516, 539 U.S. 244 (2003)');
+    expect(p.normalizedCite).toBe('539 U.S. 244');
+    expect(p.caseName).not.toMatch(/No\./);
+    expect(p.caseName).toContain('Bollinger');
+  });
+
+  it('handles a multi-word reporter with a pincite', () => {
+    const p = parseCitation('Doe v. Roe, 410 F. Supp. 2d 552, 558 (S.D.N.Y. 2006)');
+    expect(p.normalizedCite).toBe('410 F. Supp. 2d 552');
+  });
+});
+
+describe('parseCitations (string cites)', () => {
+  it('splits a semicolon string cite into one entry per authority', () => {
+    const cites = parseCitations(
+      'Celotex Corp. v. Catrett, 477 U.S. 317, 322 (1986); Matsushita Elec. Indus. Co. v. Zenith Radio Corp., 475 U.S. 574, 587 (1986)',
+    );
+    expect(cites).toHaveLength(2);
+    expect(cites[0].normalizedCite).toBe('477 U.S. 317');
+    expect(cites[0].caseName).toContain('Celotex');
+    expect(cites[1].normalizedCite).toBe('475 U.S. 574');
+    expect(cites[1].caseName).toContain('Matsushita');
+  });
+
+  it('returns a single entry for a single cite', () => {
+    expect(parseCitations('Bell Atlantic Corp. v. Twombly, 550 U.S. 544 (2007)')).toHaveLength(1);
+  });
+
+  it('returns nothing for text with no citation', () => {
+    expect(parseCitations('see the attached memorandum')).toHaveLength(0);
   });
 });
 

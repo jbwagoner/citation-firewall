@@ -1,47 +1,92 @@
 import type { ParsedCitation } from './types.js';
 
-// Matches a reporter citation anchored on the year parenthetical that follows it,
-// e.g. "550 U.S. 544 (2007)" or "784 F.3d 412 (9th Cir. 2015)".
-//   group 1: volume      "550"
-//   group 2: reporter     "U.S." / "F.3d" / "F. Supp. 2d"
-//   group 3: page        "544"
-//   group 4: year paren  "2007" / "9th Cir. 2015"
-const CITE_RE =
-  /(\d+)\s+([A-Z][A-Za-z0-9.]*(?:\s+[A-Za-z0-9.]+)*?)\s+(\d+)\s*\(([^)]*\b\d{4}\b)\)/;
+// Matches a reporter citation, anchored on the year parenthetical that follows
+// it, and TOLERATING real-world brief formatting:
+//   "550 U.S. 544 (2007)"                         (clean)
+//   "477 U.S. 57, 64 (1986)"                       (pincite after first page)
+//   "477 U.S. 242, 248-49 (1986)"                  (pincite range)
+//   "410 F. Supp. 2d 552, 558 (S.D.N.Y. 2006)"     (multi-word reporter + pincite)
+//   group 1: volume   group 2: reporter   group 3: page   group 4: year paren
+//
+// The `(?:\s*,\s*\d+(?:[-–]\d+)?)*` after the page consumes one or more pincites
+// (the single most common reason real citations failed to parse). Reporter is
+// lazy so it stops at the page; pincites are discarded — only vol/reporter/page
+// feed the lookup, which is exactly the key CourtListener returns.
+const CITE_SOURCE =
+  '(\\d+)\\s+([A-Z][A-Za-z0-9.]*(?:\\s+[A-Za-z0-9.]+)*?)\\s+(\\d+)(?:\\s*,\\s*\\d+(?:[-–]\\d+)?)*\\s*\\(([^)]*\\b\\d{4}\\b)\\)';
+
+// Leading Bluebook signals to strip from a case name ("see also Anderson…").
+const SIGNAL_RE =
+  /^(?:see also|see generally|see, e\.g\.,|see|cf\.|accord|but see|but cf\.|compare|contra|e\.g\.,)\s+/i;
+
+// Docket numbers embedded in (or before) a case name: "No. 02-516", "No. 21-1199".
+const DOCKET_RE = /,?\s*No\.\s*[\dA-Za-z–-]+/g;
 
 /**
- * Parse a single citation string into its reporter components. The case name is
- * everything before the volume number, stripped of a trailing comma.
- *
- * A model may extract and hand us these strings — but parsing here is pure code,
- * and an unparseable cite becomes UNVERIFIED (never VERIFIED). See RUBRIC R3.
+ * Parse a single citation string into its reporter components. Returns the FIRST
+ * citation found (back-compat); for string cites use {@link parseCitations}.
+ * Unparseable → null cite (which the verifier treats as UNVERIFIED, never VERIFIED).
  */
 export function parseCitation(raw: string): ParsedCitation {
+  const all = parseCitations(raw);
+  if (all.length > 0) return all[0];
   const text = raw.trim();
-  const m = CITE_RE.exec(text);
-  if (!m) {
-    return {
-      raw: text,
-      caseName: cleanName(text) || null,
-      volume: null,
-      reporter: null,
-      page: null,
-      normalizedCite: null,
-    };
+  return {
+    raw: text,
+    caseName: cleanName(text) || null,
+    volume: null,
+    reporter: null,
+    page: null,
+    normalizedCite: null,
+  };
+}
+
+/**
+ * Find EVERY citation in a string. A single brief reference is often a string
+ * cite — "Celotex…, 477 U.S. 317 (1986); Matsushita…, 475 U.S. 574 (1986)" — and
+ * each cited authority must get its own ledger verdict. The case name for each
+ * cite is the text since the previous cite, with signals/dockets stripped.
+ */
+export function parseCitations(text: string): ParsedCitation[] {
+  const re = new RegExp(CITE_SOURCE, 'g');
+  const out: ParsedCitation[] = [];
+  let m: RegExpExecArray | null;
+  let lastEnd = 0;
+
+  while ((m = re.exec(text)) !== null) {
+    const [full, volume, reporterRaw, page] = m;
+    const reporter = reporterRaw.replace(/\s+/g, ' ').trim();
+    const caseName = cleanName(text.slice(lastEnd, m.index)) || null;
+    const segment = text.slice(lastEnd, m.index + full.length);
+    const displayRaw = stripSignal(segment.replace(/^[\s;,]+/, '')).trim() || full.trim();
+    out.push({
+      raw: displayRaw,
+      caseName,
+      volume,
+      reporter,
+      page,
+      normalizedCite: `${volume} ${reporter} ${page}`,
+    });
+    lastEnd = m.index + full.length;
   }
+  return out;
+}
 
-  const [, volume, reporterRaw, page] = m;
-  const reporter = reporterRaw.replace(/\s+/g, ' ').trim();
-  const caseName = cleanName(text.slice(0, m.index)) || null;
-  const normalizedCite = `${volume} ${reporter} ${page}`;
-
-  return { raw: text, caseName, volume, reporter, page, normalizedCite };
+function stripSignal(s: string): string {
+  let prev: string;
+  let cur = s.trim();
+  do {
+    prev = cur;
+    cur = cur.replace(SIGNAL_RE, '').trim();
+  } while (cur !== prev);
+  return cur;
 }
 
 function cleanName(s: string): string {
-  return s
+  return stripSignal(s)
+    .replace(DOCKET_RE, '')
     .replace(/[,;:\s]+$/, '')
-    .replace(/^[\s,]+/, '')
+    .replace(/^[\s,;]+/, '')
     .trim();
 }
 
@@ -63,6 +108,10 @@ const STOP_WORDS = new Set([
   'holdings',
   'brands',
   'industries',
+  'see',
+  'also',
+  'cf',
+  'accord',
 ]);
 
 /**
