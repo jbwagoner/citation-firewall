@@ -17,11 +17,16 @@ import type { CitationStatus, LedgerEntry, ParsedCitation } from './types.js';
 const CL_BASE = 'https://www.courtlistener.com/api/rest/v4';
 const FETCH_TIMEOUT_MS = 12_000;
 
-/** What CourtListener tells us about one citation. `null` === unreachable. */
+/**
+ * What CourtListener tells us about one citation. `null` === unreachable.
+ * A reporter cite can match MORE THAN ONE opinion (the endpoint returns
+ * per-citation status 300 with several clusters — duplicates or companion
+ * cases), so we carry all candidates and let the caller pick the one whose
+ * name matches the cited case.
+ */
 export interface CiteLookupResult {
   found: boolean;
-  url: string | null;
-  actualCaseName: string | null;
+  candidates: { url: string | null; caseName: string | null }[];
 }
 
 /**
@@ -92,22 +97,25 @@ export async function verifyParsed(
   }
 
   if (byCite.found) {
-    // A real opinion sits at this reporter cite. Does its name match the cited
-    // case? If yes, this is a genuine VERIFIED. If the cite resolves to a
-    // DIFFERENT case, the cited case+cite pair does not exist — that is the
-    // classic fabrication signature, so we FLAG it rather than rubber-stamp it.
-    if (nameMatches(parsed.caseName, byCite.actualCaseName)) {
+    // A real opinion sits at this reporter cite. Does one of the matching
+    // opinions carry the cited case name? If yes, this is a genuine VERIFIED
+    // (even when the cite matched several opinions). If the cite resolves only
+    // to a DIFFERENT case, the cited case+cite pair does not exist — that is
+    // the classic fabrication signature, so we FLAG it rather than rubber-stamp.
+    const match = byCite.candidates.find((c) => nameMatches(parsed.caseName, c.caseName));
+    if (match) {
       return finish('VERIFIED', 'Confirmed: real opinion found at this citation.', {
-        url: byCite.url,
-        actualCaseName: byCite.actualCaseName,
+        url: match.url,
+        actualCaseName: match.caseName,
       });
     }
+    const first = byCite.candidates[0];
     return finish(
       'FLAGGED',
       `This reporter citation resolves to a different case (${
-        byCite.actualCaseName ?? 'unknown'
+        first?.caseName || 'unknown'
       }). The cited case was not found at this citation — hallmark of AI fabrication. BLOCKED from synthesis.`,
-      { url: byCite.url, actualCaseName: byCite.actualCaseName },
+      { url: first?.url ?? null, actualCaseName: first?.caseName ?? null },
     );
   }
 
@@ -121,10 +129,11 @@ export async function verifyParsed(
   }
 
   if (byName && byName.found) {
+    const c = byName.candidates[0];
     return finish(
       'HIGH_CONFIDENCE',
       'The case name was found in CourtListener, but not at the cited reporter location — verify the citation.',
-      { url: byName.url, actualCaseName: byName.actualCaseName },
+      { url: c?.url ?? null, actualCaseName: c?.caseName ?? null },
     );
   }
 
@@ -193,13 +202,21 @@ export function createCourtListenerClient(token: string): CourtListenerClient {
     }
   }
 
-  function indexEntry(entry: CitationLookupEntry): void {
-    const cluster = entry.clusters?.[0];
-    const result: CiteLookupResult = {
-      found: entry.status === 200 && !!cluster,
-      url: absoluteUrl(cluster?.absolute_url),
-      actualCaseName: cluster?.case_name ?? null,
+  function toResult(entry: CitationLookupEntry): CiteLookupResult {
+    const clusters = entry.clusters ?? [];
+    // status 200 = unique match, 300 = multiple matches (still real opinions).
+    const found = (entry.status === 200 || entry.status === 300) && clusters.length > 0;
+    return {
+      found,
+      candidates: clusters.map((c) => ({
+        url: absoluteUrl(c.absolute_url),
+        caseName: c.case_name ?? null,
+      })),
     };
+  }
+
+  function indexEntry(entry: CitationLookupEntry): void {
+    const result = toResult(entry);
     const keys = [entry.citation, ...(entry.normalized_citations ?? [])].filter(
       (k): k is string => !!k,
     );
@@ -222,18 +239,14 @@ export function createCourtListenerClient(token: string): CourtListenerClient {
       if (primed) {
         if (cache.has(key)) return cache.get(key)!;
         if (degraded) return null; // batch failed and we have no cached answer
-        return { found: false, url: null, actualCaseName: null }; // CL parsed no opinion here
+        return { found: false, candidates: [] }; // CL parsed no opinion here
       }
       // Not primed (e.g. used directly) — fall back to a single lookup.
       const data = await rawLookup(normalizedCite);
       if (data === null) return null;
-      const entry = data[0];
-      const cluster = entry?.clusters?.[0];
-      return {
-        found: !!entry && entry.status === 200 && !!cluster,
-        url: absoluteUrl(cluster?.absolute_url),
-        actualCaseName: cluster?.case_name ?? null,
-      };
+      return data[0]
+        ? toResult(data[0])
+        : { found: false, candidates: [] };
     },
 
     async searchByName(caseName: string): Promise<CiteLookupResult | null> {
@@ -246,14 +259,13 @@ export function createCourtListenerClient(token: string): CourtListenerClient {
         const data = (await res.json()) as {
           results?: Array<{ caseName?: string; case_name?: string; absolute_url?: string }>;
         };
-        const results = data.results ?? [];
-        for (const r of results) {
-          const name = r.caseName ?? r.case_name ?? null;
-          if (nameMatches(caseName, name)) {
-            return { found: true, url: absoluteUrl(r.absolute_url), actualCaseName: name };
-          }
-        }
-        return { found: false, url: null, actualCaseName: null };
+        const candidates = (data.results ?? [])
+          .map((r) => ({
+            url: absoluteUrl(r.absolute_url),
+            caseName: r.caseName ?? r.case_name ?? null,
+          }))
+          .filter((c) => nameMatches(caseName, c.caseName));
+        return { found: candidates.length > 0, candidates };
       } catch {
         return null;
       }

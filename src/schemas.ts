@@ -7,14 +7,15 @@ import { z } from 'zod';
 // re-validate the result ourselves.
 
 export const ExtractSchema = z.object({
-  argumentsList: z
-    .array(
-      z.object({
-        heading: z.string(),
-        passage: z.string(),
-      }),
-    )
-    .min(1),
+  // May be empty: citation-dense / argument-light text (e.g. a table of
+  // authorities) legitimately has no developed argument. The pipeline still
+  // runs — it verifies the citations and synthesizes from the ledger.
+  argumentsList: z.array(
+    z.object({
+      heading: z.string(),
+      passage: z.string(),
+    }),
+  ),
   citations: z.array(z.string()),
 });
 

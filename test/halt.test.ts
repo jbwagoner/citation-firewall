@@ -68,4 +68,21 @@ describe('halt stops the pipeline before the next stage (RUBRIC R4)', () => {
     expect(run.result).toBeDefined();
     expect(run.events.some((e) => e.type === 'done')).toBe(true);
   });
+
+  it('completes (does not crash) on citation-dense, argument-light text — zero arguments', async () => {
+    const run = createRun('TABLE OF AUTHORITIES …');
+    const deps = stubDeps({
+      // Extract finds citations but NO developed arguments.
+      runExtract: vi.fn(async () => ({
+        argumentsList: [],
+        citations: ['Foo v. Bar, 1 U.S. 1 (1900)'],
+      })),
+    });
+    await runPipeline(run, deps);
+
+    expect(run.status).toBe('done');
+    expect(run.result).toBeDefined();
+    expect(deps.runSutra).toHaveBeenCalledOnce();
+    expect(run.events.some((e) => e.type === 'error')).toBe(false);
+  });
 });

@@ -6,8 +6,8 @@ const FAKE = 'Sunhaven Brands, LLC v. Meridian Apparel Co., 784 F.3d 412 (9th Ci
 
 function client(over: Partial<CourtListenerClient>): CourtListenerClient {
   return {
-    lookupByCite: async () => ({ found: false, url: null, actualCaseName: null }),
-    searchByName: async () => ({ found: false, url: null, actualCaseName: null }),
+    lookupByCite: async () => ({ found: false, candidates: [] }),
+    searchByName: async () => ({ found: false, candidates: [] }),
     ...over,
   };
 }
@@ -19,8 +19,12 @@ describe('verifier mapping (mocked CourtListener)', () => {
       client({
         lookupByCite: async () => ({
           found: true,
-          url: 'https://www.courtlistener.com/opinion/1/twombly/',
-          actualCaseName: 'Bell Atlantic Corp. v. Twombly',
+          candidates: [
+            {
+              url: 'https://www.courtlistener.com/opinion/1/twombly/',
+              caseName: 'Bell Atlantic Corp. v. Twombly',
+            },
+          ],
         }),
       }),
     );
@@ -32,11 +36,15 @@ describe('verifier mapping (mocked CourtListener)', () => {
     const e = await verifyCitation(
       REAL,
       client({
-        lookupByCite: async () => ({ found: false, url: null, actualCaseName: null }),
+        lookupByCite: async () => ({ found: false, candidates: [] }),
         searchByName: async () => ({
           found: true,
-          url: 'https://www.courtlistener.com/opinion/1/twombly/',
-          actualCaseName: 'Bell Atlantic Corp. v. Twombly',
+          candidates: [
+            {
+              url: 'https://www.courtlistener.com/opinion/1/twombly/',
+              caseName: 'Bell Atlantic Corp. v. Twombly',
+            },
+          ],
         }),
       }),
     );
@@ -55,12 +63,36 @@ describe('verifier mapping (mocked CourtListener)', () => {
       client({
         lookupByCite: async () => ({
           found: true,
-          url: 'https://www.courtlistener.com/opinion/9/other/',
-          actualCaseName: 'United States v. Lopez',
+          candidates: [
+            {
+              url: 'https://www.courtlistener.com/opinion/9/other/',
+              caseName: 'United States v. Lopez',
+            },
+          ],
         }),
       }),
     );
     expect(e.status).toBe('FLAGGED');
+  });
+
+  it('cite with MULTIPLE matches (status 300) → VERIFIED when one candidate name matches', async () => {
+    const e = await verifyCitation(
+      'Gregory v. Shelby County, 220 F.3d 433 (6th Cir. 2000)',
+      client({
+        lookupByCite: async () => ({
+          found: true,
+          candidates: [
+            { url: 'https://www.courtlistener.com/opinion/a/', caseName: '' },
+            {
+              url: 'https://www.courtlistener.com/opinion/b/gregory-v-shelby-county/',
+              caseName: 'Gregory v. Shelby County',
+            },
+          ],
+        }),
+      }),
+    );
+    expect(e.status).toBe('VERIFIED');
+    expect(e.url).toContain('gregory-v-shelby-county');
   });
 
   it('CourtListener unreachable → UNVERIFIED (database unavailable, never a false VERIFIED)', async () => {

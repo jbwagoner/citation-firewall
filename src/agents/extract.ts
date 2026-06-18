@@ -13,7 +13,7 @@ Return exactly:
 Rules:
 - Every "passage" must be copied verbatim from the brief — do not paraphrase.
 - Capture EVERY case citation you see, including any that look suspicious. Copy the full string (case name + reporter cite + year). Never invent or "correct" a citation.
-- Identify 2–5 distinct legal arguments.
+- Identify the distinct legal arguments (typically 2–5). If the text is a table of authorities, a citation list, or otherwise contains no developed argument, return an EMPTY argumentsList — but still extract every citation.
 - Output only the JSON object.`;
 
 export function runExtract(briefText: string): Promise<ExtractOutput> {
